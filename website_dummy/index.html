@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Smart Vending AI</title>
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+</head>
+<body>
+
+<h1>Smart Vending Machine</h1>
+
+<!-- 🔥 MODE -->
+<h3>Pilih Mode</h3>
+<button onclick="setMode('manual')">Manual</button>
+<button onclick="setMode('llm')">LLM</button>
+
+<p>Mode sekarang: <b id="mode">manual</b></p>
+
+<hr>
+
+<!-- 🔥 LLM MODE -->
+<div id="llmSection" style="display:none;">
+    <h3>Input AI</h3>
+    <input type="text" id="inputText" placeholder="contoh: capcay 2 dan nasi goreng">
+    <button onclick="sendLLM()">Kirim ke AI</button>
+</div>
+
+<!-- 🔥 MANUAL MODE -->
+<div id="manualSection">
+    <h3>Pilih Bahan</h3>
+
+    <!-- contoh bahan -->
+    <button onclick="addItem(1)">Bahan 1</button>
+    <button onclick="addItem(2)">Bahan 2</button>
+    <button onclick="addItem(3)">Bahan 3</button>
+    <button onclick="addItem(4)">Bahan 4</button>
+    <button onclick="addItem(5)">Bahan 5</button>
+    <button onclick="addItem(6)">Bahan 6</button>
+
+    <br><br>
+    <button onclick="checkout()">Checkout</button>
+</div>
+
+<hr>
+
+<h3>Keranjang</h3>
+<pre id="cart"></pre>
+
+<h3>Output</h3>
+<pre id="output"></pre>
+
+<script>
+const machine_id = "VM001"; // nanti dari QR kalau sudah jadi
+
+const client = mqtt.connect("wss://broker.hivemq.com:8884/mqtt");
+
+client.on("connect", () => {
+    console.log("MQTT Connected");
+});
+
+client.on("error", (err) => {
+    console.log("MQTT Error:", err);
+});
+
+let mode = "manual";
+let cart = [];
+
+// 🔥 set mode
+function setMode(m) {
+    mode = m;
+    document.getElementById("mode").innerText = m;
+
+    if (m === "manual") {
+        document.getElementById("manualSection").style.display = "block";
+        document.getElementById("llmSection").style.display = "none";
+    } else {
+        document.getElementById("manualSection").style.display = "none";
+        document.getElementById("llmSection").style.display = "block";
+    }
+}
+
+// 🔥 tambah item manual
+function addItem(item) {
+    cart.push(item);
+    updateCart();
+}
+
+// 🔥 tampilkan cart
+function updateCart() {
+    document.getElementById("cart").innerText = JSON.stringify(cart);
+}
+
+// 🔥 checkout manual → kirim ke mesin
+function checkout() {
+    if (cart.length === 0) {
+        alert("Keranjang kosong!");
+        return;
+    }
+
+    const payload = { items: cart };
+
+    document.getElementById("output").innerText = JSON.stringify(payload, null, 2);
+
+    sendToMachine(cart);
+
+    cart = [];
+    updateCart();
+}
+
+// 🔥 LLM mode
+async function sendLLM() {
+    const text = document.getElementById("inputText").value;
+
+    const res = await fetch("http://127.0.0.1:8000/chat", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ message: text })
+    });
+
+    const data = await res.json();
+
+    document.getElementById("output").innerText = JSON.stringify(data, null, 2);
+
+    sendToMachine(data.items);
+}
+
+// 🔥 kirim ke mesin (sementara dummy)
+// function sendToMachine(items) {
+//     console.log("Kirim ke mesin:", items);
+
+//     // nanti ganti ke API / serial
+// }
+
+function sendToMachine(items) {
+    if (!client.connected) {
+        alert("MQTT belum connect!");
+        return;
+    }
+
+    const topic = `vending/${machine_id}/cmd`;
+
+    const payload = {
+        items: items
+    };
+
+    client.publish(topic, JSON.stringify(payload));
+
+    console.log("SEND MQTT:", topic, payload);
+}
+
+</script>
+
+</body>
+</html>
