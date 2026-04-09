@@ -51,7 +51,7 @@
 <script>
 const machine_id = "VM001"; // nanti dari QR kalau sudah jadi
 
-const client = mqtt.connect("wss://broker.hivemq.com:8884/mqtt");
+const client = mqtt.connect("ws://broker.hivemq.com:8000/mqtt");
 
 client.on("connect", () => {
     console.log("MQTT Connected");
@@ -64,7 +64,6 @@ client.on("error", (err) => {
 let mode = "manual";
 let cart = [];
 
-// 🔥 set mode
 function setMode(m) {
     mode = m;
     document.getElementById("mode").innerText = m;
@@ -78,18 +77,15 @@ function setMode(m) {
     }
 }
 
-// 🔥 tambah item manual
 function addItem(item) {
     cart.push(item);
     updateCart();
 }
 
-// 🔥 tampilkan cart
 function updateCart() {
     document.getElementById("cart").innerText = JSON.stringify(cart);
 }
 
-// 🔥 checkout manual → kirim ke mesin
 function checkout() {
     if (cart.length === 0) {
         alert("Keranjang kosong!");
@@ -106,7 +102,6 @@ function checkout() {
     updateCart();
 }
 
-// 🔥 LLM mode
 async function sendLLM() {
     const text = document.getElementById("inputText").value;
 
@@ -124,13 +119,6 @@ async function sendLLM() {
 
     sendToMachine(data.items);
 }
-
-// 🔥 kirim ke mesin (sementara dummy)
-// function sendToMachine(items) {
-//     console.log("Kirim ke mesin:", items);
-
-//     // nanti ganti ke API / serial
-// }
 
 function sendToMachine(items) {
     if (!client.connected) {
